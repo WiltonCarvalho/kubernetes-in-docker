@@ -1,0 +1,200 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gitlab
+spec:
+  selector:
+    matchLabels:
+      app: gitlab
+  serviceName: "gitlab"
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: gitlab
+    spec:
+      containers:
+      - name: gitlab
+        image: gitlab/gitlab-ce:16.1.2-ce.0
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 22
+          name: ssh
+        volumeMounts:
+        - name: data
+          mountPath: /var/opt/gitlab
+        - name: logs
+          mountPath: /var/log/gitlab
+        - name: config
+          mountPath: /etc/gitlab
+        env:                                                                                                          
+        - name: GITLAB_OMNIBUS_CONFIG                                                                                             
+          value: |
+            gitlab_rails['time_zone'] = 'America/Sao_Paulo'
+            gitlab_rails['initial_root_password'] = 'kai0Eihipie3Iek7'
+            external_url 'http://gitlab.172.19.0.1.sslip.io'
+            gitlab_rails['gitlab_shell_ssh_port'] = 22
+            letsencrypt['enable'] = false
+            nginx['listen_port'] = 80
+            nginx['listen_https'] = false
+            nginx['redirect_http_to_https'] = false
+            mattermost_nginx['redirect_http_to_https'] = false
+            # gitlab_rails['gitlab_default_projects_features_container_registry'] = false
+            registry_external_url 'http://registry.172.19.255.201.sslip.io'
+            registry_nginx['listen_port'] = 80
+            registry_nginx['listen_https'] = false
+            registry_nginx['redirect_http_to_https'] = false
+            # https://docs.gitlab.com/omnibus/settings/memory_constrained_envs.html
+            puma['worker_processes'] = 0
+            sidekiq['max_concurrency'] = 10
+            prometheus_monitoring['enable'] = false
+            gitlab_rails['env'] = {
+              'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000',
+              'GITLAB_THROTTLE_BYPASS_HEADER' => 'Gitlab-Bypass-Rate-Limiting'
+            }
+            gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '10.244.0.1', '10.244.0.0/16']
+        # livenessProbe:
+        #   failureThreshold: 3
+        #   httpGet:
+        #     path: /-/liveness
+        #     port: 80
+        #     scheme: HTTP
+        #   initialDelaySeconds: 300
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /-/readiness
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+  - metadata:
+      name: logs
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+  - metadata:
+      name: config
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: gitlab
+  name: gitlab-web
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 172.19.255.200
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: gitlab
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: gitlab
+  name: gitlab-registry
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 172.19.255.201
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: gitlab
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: gitlab
+  name: gitlab-ssh
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 172.19.255.202
+  ports:
+  - name: ssh
+    port: 22
+    protocol: TCP
+    targetPort: 22
+  selector:
+    app: gitlab
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app: gitlab
+  name: gitlab-web
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gitlab.172.19.0.1.sslip.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: gitlab-web
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+###################################
+# TODO - GitLab Registry Ingress
+# Push from Docker fails
+# Push from Skopeo works
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   annotations:
+#     nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+#     nginx.ingress.kubernetes.io/proxy-body-size: "0"
+#     nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+#     nginx.ingress.kubernetes.io/proxy-buffering: "off"
+#   labels:
+#     app: gitlab
+#   name: gitlab-registry
+# spec:
+#   ingressClassName: nginx
+#   rules:
+#   - host: registry.172.19.0.1.sslip.io
+#     http:
+#       paths:
+#       - backend:
+#           service:
+#             name: gitlab-registry
+#             port:
+#               number: 80
+#         path: /
+#         pathType: Prefix

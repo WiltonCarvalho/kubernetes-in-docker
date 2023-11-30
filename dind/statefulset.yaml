@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dind
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: dind
+  serviceName: "docker"
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: dind
+        app: dind
+    spec:
+      volumes:
+        - name: server-certs
+          secret:
+            secretName: dind-server
+      containers:
+        - image: docker:24-dind
+          name: dind
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: "/certs"
+          ports:
+            - containerPort: 2376
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/docker
+            - name: server-certs
+              mountPath: /certs/server/ca.pem
+              subPath: "ca.pem"
+              readOnly: true
+            - name: server-certs
+              mountPath: /certs/server/cert.pem
+              subPath: "cert.pem"
+              readOnly: true
+            - name: server-certs
+              mountPath: /certs/server/key.pem
+              subPath: "key.pem"
+              readOnly: true
+          livenessProbe:
+            exec:
+              command:
+              - docker
+              - info
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          readinessProbe:
+            exec:
+              command:
+              - docker
+              - info
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+      restartPolicy: Always
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 50Gi

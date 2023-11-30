@@ -1,0 +1,22 @@
+# Docker Workstation with X11
+# DinD, KinD, Kubectl, Kustomize, Helm, K9s, wget, curl, jq, Skopeo, Firefox
+
+# Build the Bastion Host
+# docker build
+docker build --build-arg MYUID=$(id -u) \
+  -t bastion-host bastion-host/ --progress=plain
+docker run -it --rm --name bastion-host --hostname bastion-host  --privileged \
+  -v $PWD:/work -w /work \
+  -e DISPLAY=$DISPLAY -e NO_AT_BRIDGE=1 \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  --device /dev/snd bastion-host
+
+# docker-compose build
+docker-compose build --progress=plain --build-arg MYUID=$(id -u)
+
+# Allow X11 Forward
+xhost +SI:localuser:$USER
+
+# Run the bastion Docker Workstation
+docker-compose up -d
+

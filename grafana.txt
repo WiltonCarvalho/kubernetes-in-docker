@@ -1,0 +1,4 @@
+# Grafana
+helm repo add grafana https://grafana.github.io/helm-charts
+helm upgrade --install grafana grafana/grafana -f grafana/grafana-values.yaml
+firefox grafana.172.19.0.1.sslip.io

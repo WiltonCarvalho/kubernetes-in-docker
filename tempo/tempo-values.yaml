@@ -1,0 +1,22 @@
+tempo:
+  storage:
+    trace:
+      backend: s3
+      s3:
+        access_key: ${AWS_ACCESS_KEY_ID}
+        secret_key: ${AWS_SECRET_ACCESS_KEY}
+        bucket: 'tempo-traces'
+        endpoint: 'minio.default.svc'
+        insecure: true
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  extraArgs:
+    '-config.expand-env': true
+  extraEnvFrom:
+    - secretRef:
+        name: minio-s3-access-key

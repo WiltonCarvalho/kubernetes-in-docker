@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+  namespace: default
+spec:
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 10Gi
+  replicas: 1
+  serviceAccountName: prometheus
+  serviceMonitorSelector: {}
+  image: quay.io/prometheus/prometheus:v2.45.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  version: v2.45.0

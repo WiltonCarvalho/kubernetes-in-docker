@@ -1,0 +1,40 @@
+# Test Docker
+docker info
+
+# Setup KinD
+kind create cluster --image kindest/node:v1.26.2 --config ~/kind-config.yaml
+
+mkdir -p ~/.kube
+kind get kubeconfig > ~/.kube/config
+chmod 600 ~/.kube/config
+kubectl cluster-info
+
+# Nginx Ingress
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+
+# MetalLB
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.7/config/manifests/metallb-native.yaml
+
+# Setup address pool used by loadbalancers
+docker network inspect kind | jq -r '.[].IPAM.Config[0].Subnet'
+kubectl -n metallb-system get pod --watch
+
+kubectl apply -f https://kind.sigs.k8s.io/examples/loadbalancer/metallb-config.yaml
+kubectl -n metallb-system get ipaddresspools
+
+# KinD Local Registry
+kubectl apply -f registry/registry.yaml
+
+# Test Local Registry
+kubectl port-forward deployment/registry 32000:5000
+skopeo copy --src-tls-verify=false --dest-tls-verify=false \
+  docker://docker.io/library/httpd \
+  docker://localhost:32000/httpd
+
+
+# HTTPD Deployment
+kubectl create deployment httpd --image=localhost:32000/httpd --port=80
+kubectl expose deployment httpd --type=NodePort --port=80 --name=httpd
+
+kubectl create ingress httpd --class=nginx --rule "httpd.172.19.0.1.sslip.io/*=httpd:80"
+firefox http://httpd.172.19.0.1.sslip.io

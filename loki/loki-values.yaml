@@ -1,0 +1,82 @@
+loki:
+  extraMemberlistConfig:
+    bind_addr:
+      - ${MY_POD_IP}
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    bucketNames:
+      chunks: loki-chunks
+      ruler: loki-ruler
+      admin: loki-admin
+    type: s3
+    s3:
+      endpoint: minio.default.svc
+      #region: sa-vinhedo-1
+      s3ForcePathStyle: true
+      insecure: true
+  structuredConfig:
+    limits_config:
+      retention_period: 24h
+  lokiCanary:
+    extraEnvFrom:
+      - secretRef:
+          name: minio-s3-access-key
+  tokengen:
+    extraEnvFrom:
+      - secretRef:
+          name: minio-s3-access-key
+compactor:
+  retention_enabled: true
+  shared_store: s3
+monitoring:
+  serviceMonitor:
+    enabled: false
+    labels:
+      release: kube-prometheus-stack
+    metricsInstance:
+      enabled: false
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false
+minio:
+  enabled: false
+test:
+  enabled: false
+singleBinary:
+  replicas: 1
+  extraEnvFrom:
+    - secretRef:
+        name: minio-s3-access-key
+  extraArgs:
+    - -config.expand-env=true
+  extraEnv:
+    - name: MY_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+gateway:
+  enabled: true
+  extraEnvFrom:
+    - secretRef:
+        name: minio-s3-access-key
+tableManager:
+  extraEnvFrom:
+    - secretRef:
+        name: minio-s3-access-key
+backend:
+  extraEnvFrom:
+    - secretRef:
+        name: minio-s3-access-key
+write:
+  extraEnvFrom:
+    - secretRef:
+        name: minio-s3-access-key
+read:
+  extraEnvFrom:
+    - secretRef:
+        name: minio-s3-access-key

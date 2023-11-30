@@ -1,0 +1,38 @@
+gitlabUrl: http://gitlab.172.19.0.1.sslip.io
+unregisterRunners: true
+replicas: 3
+rbac:
+  create: true
+image:
+  registry: docker.io
+  image: gitlab/gitlab-runner
+  tag: alpine-v16.6.0
+runners:
+  secret: gitlab-runner-secret
+  config: |
+    [[runners]]
+      environment = ["LC_ALL=en_US.UTF-8", "LANG=C.UTF-8", "LANGUAGE=en_US:en", "DOCKER_HOST=tcp://docker:2376", "DOCKER_TLS_VERIFY=1", "DOCKER_CERT_PATH=/certs/client"]
+      [runners.kubernetes]
+        image = "docker:24-git"
+        privileged = true
+        helper_image = "docker.io/gitlab/gitlab-runner-helper:x86_64-85586bd1"
+        ### DinD Stafulset certificates ###
+        # [[runners.kubernetes.volumes.secret]]
+        #   name = "dind-client"
+        #   mount_path = "/certs/client"
+        #   read_only = true
+        #   [runners.kubernetes.volumes.secret.items]
+        #     "ca.pem" = "ca.pem"
+        #     "cert.pem" = "cert.pem"
+        #     "key.pem" = "key.pem"
+      [runners.cache]
+        Type = "s3"
+        Shared = true
+        [runners.cache.s3]
+          ServerAddress = "minio"
+          BucketName = "gitlab-ci"
+          BucketLocation = "us-east-1"
+          Insecure = true
+          AuthenticationType = "access-key"
+  cache:
+    secretName: gitlab-runner-s3-secret
