@@ -3,12 +3,14 @@ docker run -it --rm \
   -e DOCKER_TLS_SAN="DNS:dind-0.docker,DNS:dind-1.docker,DNS:dind-2.docker" \
   -v $PWD/dind/certs:/certs \
   --privileged public.ecr.aws/docker/library/docker:24-dind ash
+
 export TINI_SUBREAPER=
 export DOCKER_TLS_CERTDIR=/certs
 export DOCKER_HOST=tcp://docker:2376
 export DOCKER_TLS_VERIFY=1
 export DOCKER_CERT_PATH=/certs/client
 nohup dockerd-entrypoint.sh &
+
 docker info
 
 # DinD Statefulset
