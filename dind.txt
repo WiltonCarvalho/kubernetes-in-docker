@@ -1,6 +1,6 @@
 # Generate DinD Certs
 docker run -it --rm \
-  -e DOCKER_TLS_SAN="DNS:dind-0.docker,DNS:dind-1.docker,DNS:dind-2.docker"
+  -e DOCKER_TLS_SAN="DNS:dind-0.docker,DNS:dind-1.docker,DNS:dind-2.docker" \
   -v $PWD/dind/certs:/certs \
   --privileged public.ecr.aws/docker/library/docker:24-dind ash
 export TINI_SUBREAPER=
