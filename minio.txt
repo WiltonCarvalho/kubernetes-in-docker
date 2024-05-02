@@ -10,7 +10,7 @@ kubectl create secret generic minio-s3-access-key \
 
 # Minio
 helm repo add minio https://charts.min.io
-helm upgrade --install minio minio/minio -f minio/minio-values.yaml
+helm upgrade --install minio minio/minio -f minio/minio-values.yaml --version 5.0.15
 firefox http://minio-console.172.19.0.1.sslip.io
 
 # Test with AWS CLI
