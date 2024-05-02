@@ -1,7 +1,6 @@
 curl -fsSL https://start.spring.io/starter.tgz \
   -d dependencies=web,actuator,prometheus \
-  -d bootVersion=2.7.6 \
-  -d javaVersion=11 \
+  -d javaVersion=17 \
   -d packageName=com.example \
   -d groupId=com.example \
   -d artifactId=demo-app \
@@ -24,39 +23,32 @@ public class Hello {
 EOF
 
 # Actuator Prometheus Metrics
-cat <<'EOF'> demo-app/src/main/resources/application.properties
+cat <<'EOF'>> demo-app/src/main/resources/application.properties
 server.port=8080
 management.server.port=8081
 management.endpoints.web.exposure.include=info,health,prometheus
 EOF
 
-# Rename jar file
-cat <<'EOF'>> demo-app/build.gradle
-bootJar {
-  archiveFileName = 'app.jar'
-}
-EOF
-
 # Dockerfile
 cat <<'EOF'> demo-app/Dockerfile
-FROM eclipse-temurin:11-jdk AS builder
+FROM eclipse-temurin:17-jdk AS builder
 WORKDIR workspace
 COPY . .
-ARG JAR_FILE=build/libs/app.jar
+ARG JAR_FILE=build/libs/*.jar
 ARG GRADLE_USER_HOME=/tmp/build_cache/gradle
 RUN --mount=type=cache,target=/tmp/build_cache/gradle \
     set -ex \
     && chmod +x gradlew \
-    && ./gradlew build -i \
+    && ./gradlew build -i -x jar \
     && java -Djarmode=layertools -jar $JAR_FILE extract
-FROM eclipse-temurin:11-jre
+FROM eclipse-temurin:17-jre
 USER 999:0
 WORKDIR workspace
 COPY --from=builder workspace/dependencies/ ./
 COPY --from=builder workspace/spring-boot-loader/ ./
 COPY --from=builder workspace/snapshot-dependencies/ ./
 COPY --from=builder workspace/application/ ./
-ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
 EOF
 
 
@@ -65,8 +57,8 @@ docker build -t demo-app demo-app/ --progress=plain
 
 # Run Demo App
 docker run -it --rm -p 8080:8080 -p 8081:8081 demo-app
-curl localhost:8080
-curl localhost:8081/actuator/health
+curl -s localhost:8080
+curl -s localhost:8081/actuator/health
 
 
 # Push Demo App to KinD Registry
