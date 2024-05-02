@@ -16,7 +16,7 @@ kubectl create secret generic gitlab-runner-s3-secret \
 # Install the Runner
 helm repo add gitlab https://charts.gitlab.io
 
-helm upgrade --install gitlab-runner gitlab/gitlab-runner -f gitlab/runner-values.yaml
+helm upgrade --install gitlab-runner gitlab/gitlab-runner -f gitlab/runner-values.yaml --version 5.0.15
 
 cp gitlab/gitlab-ci.yml /tmp/alpine/.gitlab-ci.yml
 cd /tmp/alpine
