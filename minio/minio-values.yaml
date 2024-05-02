@@ -9,6 +9,8 @@ buckets:
 persistence:
   enabled: true
   size: 10Gi
+deploymentUpdate:
+  type: Recreate
 replicas: 1
 resources:
   requests:
